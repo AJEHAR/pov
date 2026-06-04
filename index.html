@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Galeri POV — Dr Syifa & Azhar</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400;1,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+
+  <style>
+    :root {
+      --nf-red:    #E50914;
+      --nf-red-dk: #b00710;
+      --nf-bg:     #141414;
+      --nf-card:   #1e1e1e;
+      --nf-card2:  #191919;
+      --nf-border: rgba(255,255,255,0.08);
+      --nf-text:   #e5e5e5;
+      --nf-muted:  #808080;
+      --nf-dim:    #555;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--nf-bg);
+      color: var(--nf-text);
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--nf-bg); }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+    /* ===== TOP BAR ===== */
+    #topBar {
+      background: var(--nf-bg);
+      position: sticky;
+      top: 0;
+      z-index: 90;
+      border-bottom: 0.5px solid rgba(255,255,255,0.08);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nf-logo {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: 0.32em;
+      color: var(--nf-red);
+    }
+
+    .live-dot {
+      display: inline-block;
+      width: 6px; height: 6px;
+      background: var(--nf-red);
+      border-radius: 50%;
+      margin-right: 5px;
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity:1; transform:scale(1); }
+      50%      { opacity:0.4; transform:scale(0.85); }
+    }
+
+    /* ===== PAGE ===== */
+    #povPage { padding-bottom: 100px; }
+
+    .pov-header {
+      padding: 16px 14px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .upload-zone {
+      border: 0.5px dashed #3a3a3a;
+      border-radius: 8px;
+      padding: 18px 14px;
+      text-align: center;
+      cursor: pointer;
+      background: #161616;
+      transition: border-color 0.2s;
+      margin: 0 14px 10px;
+    }
+    .upload-zone:hover { border-color: var(--nf-red); }
+
+    /* ===== FILTER CHIPS ===== */
+    .filter-bar {
+      display: flex;
+      gap: 6px;
+      padding: 0 14px 12px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .filter-bar::-webkit-scrollbar { display: none; }
+
+    .filter-chip {
+      flex-shrink: 0;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 0.62rem;
+      font-weight: 500;
+      border: 0.5px solid #3a3a3a;
+      background: var(--nf-card);
+      color: #777;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .filter-chip.active {
+      background: var(--nf-red);
+      color: white;
+      border-color: var(--nf-red);
+    }
+
+    /* ===== GALLERY MASONRY ===== */
+    #galleryContainer {
+      columns: 2;
+      column-gap: 8px;
+      padding: 0 14px;
+    }
+
+    .feed-card {
+      break-inside: avoid;
+      margin-bottom: 8px;
+      border-radius: 6px;
+      overflow: hidden;
+      cursor: pointer;
+      border: 0.5px solid #282828;
+      background: var(--nf-card);
+      transition: opacity 0.2s;
+      position: relative;
+    }
+    .feed-card:active { opacity: 0.75; }
+
+    .feed-card-img img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .feed-card-info {
+      padding: 8px 10px;
+      background: var(--nf-card);
+    }
+
+    .feed-name {
+      font-size: 0.6rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--nf-red);
+      margin-bottom: 3px;
+    }
+
+    .feed-msg {
+      font-family: 'Playfair Display', serif;
+      font-size: 0.7rem;
+      font-style: italic;
+      color: #888;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .feed-text-only { padding: 12px; }
+
+    /* ===== BADGE BARU ===== */
+    .badge-baru {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: var(--nf-red);
+      color: white;
+      font-size: 0.48rem;
+      font-weight: 700;
+      padding: 2px 5px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      z-index: 2;
+    }
+
+    /* ===== SHIMMER SKELETON ===== */
+    .shimmer-wrap {
+      columns: 2;
+      column-gap: 8px;
+      padding: 0 14px;
+    }
+
+    .shimmer-card {
+      break-inside: avoid;
+      margin-bottom: 8px;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 0.5px solid #252525;
+      background: var(--nf-card);
+    }
+
+    .shimmer-block {
+      background: linear-gradient(90deg, #1e1e1e 25%, #2a2a2a 50%, #1e1e1e 75%);
+      background-size: 200% 100%;
+      animation: shimmerAnim 1.5s infinite;
+    }
+
+    @keyframes shimmerAnim {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .shimmer-img  { width: 100%; height: 90px; }
+    .shimmer-line {
+      height: 7px;
+      border-radius: 4px;
+      margin: 7px 8px 4px;
+    }
+    .shimmer-line.short { width: 55%; margin-bottom: 8px; }
+
+    /* ===== EMPTY STATE ===== */
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+    }
+
+    .empty-icon {
+      width: 56px; height: 56px;
+      background: rgba(229,9,20,0.08);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 14px;
+    }
+
+    /* ===== PULL TO REFRESH ===== */
+    #ptrIndicator {
+      text-align: center;
+      padding: 10px;
+      font-size: 0.58rem;
+      color: #3a3a3a;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height 0.3s ease, opacity 0.3s ease;
+      opacity: 0;
+    }
+    #ptrIndicator.visible {
+      max-height: 40px;
+      opacity: 1;
+    }
+
+    /* ===== TOAST ===== */
+    #toastContainer {
+      position: fixed;
+      bottom: 80px;
+      left: 14px; right: 14px;
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      pointer-events: none;
+    }
+
+    .toast-msg {
+      background: #1e1e1e;
+      border: 0.5px solid #2a2a2a;
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.72rem;
+      color: #ccc;
+      animation: toastIn 0.3s ease forwards;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+
+    .toast-msg.success { border-left: 2.5px solid #5d9; }
+    .toast-msg.error   { border-left: 2.5px solid var(--nf-red); }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes toastOut {
+      from { opacity: 1; transform: translateY(0); }
+      to   { opacity: 0; transform: translateY(8px); }
+    }
+
+    /* ===== UPLOAD MODAL ===== */
+    #uploadModal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(4px);
+      z-index: 75;
+      display: none;
+      align-items: flex-end;
+    }
+    @media(min-width:500px) { #uploadModal { align-items: center; justify-content: center; } }
+
+    #modalContent {
+      width: 100%;
+      max-width: 500px;
+      background: #181818;
+      border-top-left-radius: 12px;
+      border-top-right-radius: 12px;
+      padding: 24px 20px 32px;
+      border: 0.5px solid #2a2a2a;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    @media(min-width:500px) {
+      #modalContent {
+        border-radius: 10px;
+        transform: translateY(0);
+        opacity: 0;
+        transition: opacity 0.25s ease;
+      }
+      #modalContent.open { opacity: 1; }
+    }
+    #modalContent.open { transform: translateY(0); }
+
+    .modal-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.3rem;
+      color: white;
+      margin-bottom: 4px;
+    }
+    .modal-sub {
+      font-size: 0.65rem;
+      color: var(--nf-muted);
+      margin-bottom: 18px;
+    }
+
+    .img-drop {
+      width: 100%;
+      height: 160px;
+      background: var(--nf-card);
+      border-radius: 8px;
+      border: 0.5px dashed #3a3a3a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .img-drop:hover { border-color: var(--nf-red); }
+
+    /* ===== INPUTS ===== */
+    .nf-label {
+      display: block;
+      font-size: 0.65rem;
+      color: var(--nf-muted);
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
+    .nf-input {
+      width: 100%;
+      background: var(--nf-card);
+      border: 0.5px solid #3a3a3a;
+      border-radius: 6px;
+      padding: 10px 12px;
+      color: white;
+      font-size: 0.75rem;
+      font-family: 'DM Sans', sans-serif;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .nf-input:focus { border-color: #555; }
+    .nf-input::placeholder { color: #3a3a3a; }
+
+    .nf-textarea {
+      width: 100%;
+      background: var(--nf-card);
+      border: 0.5px solid #3a3a3a;
+      border-radius: 6px;
+      padding: 10px 12px;
+      color: white;
+      font-size: 0.75rem;
+      font-family: 'DM Sans', sans-serif;
+      outline: none;
+      resize: none;
+      transition: border-color 0.2s;
+    }
+    .nf-textarea:focus { border-color: #555; }
+    .nf-textarea::placeholder { color: #3a3a3a; }
+
+    /* ===== BUTTON ===== */
+    .btn-nf {
+      background: var(--nf-red);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      font-family: 'DM Sans', sans-serif;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-nf:hover  { background: var(--nf-red-dk); }
+    .btn-nf:active { transform: scale(0.97); }
+
+    /* ===== FLOATING ADD BTN ===== */
+    #floatingAddBtn {
+      position: fixed;
+      bottom: 24px;
+      right: 16px;
+      z-index: 79;
+      width: 50px; height: 50px;
+      background: var(--nf-red);
+      border-radius: 50%;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(229,9,20,0.5);
+      transition: transform 0.15s;
+    }
+    #floatingAddBtn:active { transform: scale(0.93); }
+    #floatingAddBtn i { font-size: 1.3rem; color: white; }
+
+    /* ===== SPIN LOADER ===== */
+    .spin {
+      display: inline-block;
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.25);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ===== HELPERS ===== */
+    .hidden { display: none !important; }
+    .w-full { width: 100%; }
+    .space-y-12 > * + * { margin-top: 12px; }
+  </style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topBar">
+  <div class="nf-logo">S &amp; A</div>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <span id="momentCount" style="font-size:0.58rem;color:#3a3a3a;background:#1a1a1a;border:0.5px solid #2a2a2a;border-radius:4px;padding:3px 8px;display:none;"></span>
+    <div style="display:flex;align-items:center;gap:4px;font-size:0.58rem;color:#555;">
+      <span class="live-dot"></span> Live
+    </div>
+  </div>
+</div>
+
+<!-- PULL TO REFRESH INDICATOR -->
+<div id="ptrIndicator">
+  <i class="ph-bold ph-arrows-clockwise" style="font-size:0.75rem;margin-right:5px;"></i>Memuatkan semula...
+</div>
+
+<!-- POV PAGE -->
+<div id="povPage">
+
+  <div class="pov-header">
+    <div>
+      <div style="font-family:'Playfair Display',serif;font-size:1.3rem;color:white;">Galeri POV</div>
+      <div style="font-size:0.62rem;color:#555;margin-top:2px;">Kongsikan kenangan bersama kami</div>
+    </div>
+  </div>
+
+  <div class="upload-zone" onclick="openUploadModal()">
+    <i class="ph-bold ph-cloud-arrow-up" style="font-size:1.6rem;color:var(--nf-red);display:block;margin-bottom:5px;"></i>
+    <div style="font-size:0.65rem;color:#555;">Tekan untuk muat naik gambar</div>
+    <div style="font-size:0.58rem;color:#3a3a3a;margin-top:2px;">Boleh serta ucapan sekali</div>
+  </div>
+
+  <!-- FILTER CHIPS -->
+  <div class="filter-bar">
+    <div class="filter-chip active" onclick="setFilter('semua', this)">Semua</div>
+    <div class="filter-chip" onclick="setFilter('gambar', this)">Gambar</div>
+    <div class="filter-chip" onclick="setFilter('ucapan', this)">Ucapan</div>
+    <div class="filter-chip" onclick="setFilter('terbaru', this)">Terbaru dulu</div>
+    <div class="filter-chip" onclick="setFilter('lama', this)">Lama dulu</div>
+  </div>
+
+  <div id="galleryContainer"></div>
+
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toastContainer"></div>
+
+<!-- UPLOAD MODAL -->
+<div id="uploadModal" style="display:none;">
+  <div id="modalContent">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div>
+        <div class="modal-title">Kongsi Kenangan</div>
+        <div class="modal-sub">Muat naik gambar atau ucapan anda</div>
+      </div>
+      <button onclick="closeUploadModal()" style="background:none;border:none;color:#555;cursor:pointer;font-size:1.3rem;padding:4px;line-height:1;">
+        <i class="ph-bold ph-x"></i>
+      </button>
+    </div>
+
+    <div class="space-y-12">
+      <div>
+        <label class="nf-label">Nama Anda</label>
+        <input type="text" id="guestName" placeholder="Nama anda..." class="nf-input">
+      </div>
+      <div>
+        <label class="nf-label">Ucapan (Opsional)</label>
+        <textarea id="guestMessage" placeholder="Tahniah, semoga bahagia..." class="nf-textarea" style="height:72px;"></textarea>
+      </div>
+      <div>
+        <div class="img-drop" onclick="document.getElementById('imageInput').click()">
+          <div id="previewPlaceholder" style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+            <i class="ph-bold ph-camera-plus" style="font-size:2rem;color:#333;"></i>
+            <span style="font-size:0.62rem;color:#444;">Ambil atau Pilih Gambar</span>
+          </div>
+          <img id="imagePreview" class="hidden" style="width:100%;height:100%;object-fit:cover;">
+          <input type="file" id="imageInput" accept="image/*" class="hidden" onchange="handleFilePreview(this)">
+        </div>
+      </div>
+      <button onclick="handleUpload()" id="submitBtn"
+              class="btn-nf w-full" style="padding:12px;border-radius:6px;justify-content:center;font-size:0.75rem;">
+        <span id="btnText">Hantar Moment</span>
+        <div id="loader" class="spin hidden" style="margin-left:8px;"></div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- FLOATING ADD BUTTON -->
+<button id="floatingAddBtn" onclick="openUploadModal()">
+  <i class="ph-bold ph-plus"></i>
+</button>
+
+<script>
+
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyn5HdthT503AP4Iqsr2yZFq9IgCuazbZCzznmMfphCKrUaVol2dzSPKBUSovQ944Ut4A/exec';
+
+function gasGet(action) {
+  return fetch(GAS_URL + '?action=' + encodeURIComponent(action)).then(r => r.json());
+}
+function gasPost(action, payload) {
+  var body = Object.assign({ action: action }, payload);
+  return fetch(GAS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(body)
+  }).then(r => r.json());
+}
+
+// ======== STATE ========
+let allData = [];
+let activeFilter = 'semua';
+const NEW_THRESHOLD_MS = 30 * 60 * 1000; // 30 minit = "Baru"
+
+// ======== TOAST ========
+function showToast(msg, type = 'success') {
+  const container = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  el.className = 'toast-msg ' + type;
+  const icon = type === 'success'
+    ? '<i class="ph-bold ph-check-circle" style="font-size:1rem;color:#5d9;flex-shrink:0;"></i>'
+    : '<i class="ph-bold ph-warning-circle" style="font-size:1rem;color:var(--nf-red);flex-shrink:0;"></i>';
+  el.innerHTML = icon + '<span>' + msg + '</span>';
+  container.appendChild(el);
+  setTimeout(() => {
+    el.style.animation = 'toastOut 0.3s ease forwards';
+    setTimeout(() => el.remove(), 300);
+  }, 3000);
+}
+
+// ======== FILTER ========
+function setFilter(filter, chipEl) {
+  activeFilter = filter;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  chipEl.classList.add('active');
+  renderGallery();
+}
+
+function getFilteredData() {
+  let data = [...allData];
+  if (activeFilter === 'gambar')  data = data.filter(i => i.fileId && i.fileId !== '');
+  if (activeFilter === 'ucapan')  data = data.filter(i => !i.fileId || i.fileId === '');
+  if (activeFilter === 'terbaru') data = data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  if (activeFilter === 'lama')    data = data.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+  return data;
+}
+
+// ======== SHIMMER ========
+function showShimmer() {
+  const container = document.getElementById('galleryContainer');
+  container.style.columns = '2';
+  container.innerHTML = [1,2,3,4].map(() => `
+    <div class="shimmer-card">
+      <div class="shimmer-block shimmer-img"></div>
+      <div class="shimmer-block shimmer-line"></div>
+      <div class="shimmer-block shimmer-line short"></div>
+    </div>`).join('');
+}
+
+// ======== EMPTY STATE ========
+function showEmpty() {
+  const container = document.getElementById('galleryContainer');
+  container.style.columns = 'unset';
+  container.innerHTML = `
+    <div class="empty-state">
+      <div class="empty-icon">
+        <i class="ph-bold ph-camera" style="font-size:1.6rem;color:var(--nf-red);"></i>
+      </div>
+      <div style="font-family:'Playfair Display',serif;font-size:1rem;color:white;margin-bottom:6px;">Tiada momen lagi</div>
+      <p style="font-size:0.65rem;color:#444;line-height:1.6;margin-bottom:16px;">Jadilah yang pertama berkongsi<br>kenangan indah bersama kami.</p>
+      <button onclick="openUploadModal()" class="btn-nf" style="font-size:0.68rem;padding:9px 18px;">
+        <i class="ph-bold ph-camera-plus"></i> Muat Naik Sekarang
+      </button>
+    </div>`;
+}
+
+// ======== RENDER GALLERY ========
+function renderGallery() {
+  const container = document.getElementById('galleryContainer');
+  const data = getFilteredData();
+
+  if (!data.length) {
+    showEmpty();
+    return;
+  }
+
+  container.style.columns = '2';
+  const now = Date.now();
+
+  container.innerHTML = data.map((item, idx) => {
+    const cleanMsg   = item.message ? item.message.replace(/\n/g,' ').replace(/'/g,"\\'") : '';
+    const displayMsg = item.message ? item.message.replace(/\n/g,'<br>') : '';
+    const isNew      = item.timestamp && (now - item.timestamp) < NEW_THRESHOLD_MS;
+    const newBadge   = isNew ? '<div class="badge-baru">Baru</div>' : '';
+
+    if (!item.fileId || item.fileId === '') {
+      return `
+        <div class="feed-card" onclick="openLightbox(${idx})">
+          ${newBadge}
+          <div class="feed-text-only">
+            <div style="font-size:0.9rem;color:var(--nf-red);margin-bottom:6px;">"</div>
+            <div class="feed-msg">${displayMsg}</div>
+            <div style="font-size:0.55rem;color:var(--nf-red);font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-top:7px;">— ${item.name}</div>
+          </div>
+        </div>`;
+    }
+    return `
+      <div class="feed-card" onclick="openLightbox(${idx})">
+        ${newBadge}
+        <div class="feed-card-img">
+          <div style="height:2px;background:var(--nf-red);"></div>
+          <img src="${item.url}" loading="lazy" style="width:100%;height:auto;display:block;">
+        </div>
+        <div class="feed-card-info">
+          <div class="feed-name">${item.name}</div>
+          <div class="feed-msg">${displayMsg}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ======== LOAD LIVE FEED ========
+function loadLiveFeed(showSkeleton = false) {
+  if (showSkeleton) showShimmer();
+
+  gasGet('getPovData').then(data => {
+    allData = Array.isArray(data) ? data : [];
+
+    // Update counter
+    const countEl = document.getElementById('momentCount');
+    if (allData.length > 0) {
+      countEl.textContent = allData.length + ' momen';
+      countEl.style.display = 'inline';
+    } else {
+      countEl.style.display = 'none';
+    }
+
+    renderGallery();
+  }).catch(() => {
+    const container = document.getElementById('galleryContainer');
+    container.style.columns = 'unset';
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">
+          <i class="ph-bold ph-wifi-slash" style="font-size:1.6rem;color:#555;"></i>
+        </div>
+        <div style="font-size:0.72rem;color:#555;margin-bottom:12px;">Gagal memuatkan. Semak sambungan anda.</div>
+        <button onclick="loadLiveFeed(true)" class="btn-nf" style="font-size:0.65rem;padding:7px 14px;">
+          <i class="ph-bold ph-arrows-clockwise"></i> Cuba Semula
+        </button>
+      </div>`;
+  });
+}
+
+// ======== LIGHTBOX (dengan swipe navigasi) ========
+let currentLightboxData = [];
+let currentLightboxIdx  = 0;
+
+function openLightbox(idx) {
+  currentLightboxData = getFilteredData();
+  currentLightboxIdx  = idx;
+  renderLightbox();
+}
+
+function renderLightbox() {
+  const existing = document.getElementById('lightboxOverlay');
+  if (existing) existing.remove();
+
+  const item = currentLightboxData[currentLightboxIdx];
+  if (!item) return;
+
+  const total = currentLightboxData.length;
+  const hasPrev = currentLightboxIdx > 0;
+  const hasNext = currentLightboxIdx < total - 1;
+
+  const lb = document.createElement('div');
+  lb.id = 'lightboxOverlay';
+  lb.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1rem;';
+  lb.onclick = (e) => { if (e.target === lb) lb.remove(); };
+
+  lb.innerHTML = `
+    <div style="position:relative;max-width:500px;width:100%;display:flex;flex-direction:column;align-items:center;">
+      ${item.url ? `<img src="${item.url}" style="max-height:60vh;width:auto;max-width:100%;border-radius:8px;margin-bottom:14px;box-shadow:0 20px 60px rgba(0,0,0,0.8);">` : ''}
+      <div style="text-align:center;color:white;padding:0 1.5rem;">
+        <div style="font-size:0.6rem;color:var(--nf-red);font-weight:600;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">${item.name}</div>
+        <p style="font-family:'Playfair Display',serif;font-size:0.9rem;font-style:italic;color:#888;line-height:1.6;">${item.message ? item.message.replace(/\n/g,'<br>') : ''}</p>
+      </div>
+
+      <!-- Counter -->
+      <div style="margin-top:14px;font-size:0.58rem;color:#444;">${currentLightboxIdx + 1} / ${total}</div>
+
+      <!-- Nav buttons -->
+      <div style="display:flex;gap:10px;margin-top:12px;">
+        <button onclick="navigateLightbox(-1)"
+          style="padding:8px 16px;background:rgba(255,255,255,${hasPrev ? '0.08' : '0.02'});border:0.5px solid rgba(255,255,255,${hasPrev ? '0.15' : '0.05'});border-radius:5px;color:${hasPrev ? '#ccc' : '#333'};font-size:0.8rem;cursor:${hasPrev ? 'pointer' : 'default'};font-family:'DM Sans',sans-serif;">
+          ‹ Sebelum
+        </button>
+        <button onclick="navigateLightbox(1)"
+          style="padding:8px 16px;background:rgba(255,255,255,${hasNext ? '0.08' : '0.02'});border:0.5px solid rgba(255,255,255,${hasNext ? '0.15' : '0.05'});border-radius:5px;color:${hasNext ? '#ccc' : '#333'};font-size:0.8rem;cursor:${hasNext ? 'pointer' : 'default'};font-family:'DM Sans',sans-serif;">
+          Seterus ›
+        </button>
+      </div>
+
+      <!-- Close -->
+      <button style="position:absolute;top:-2rem;right:0;color:#555;font-size:1.3rem;background:none;border:none;cursor:pointer;padding:4px;" onclick="document.getElementById('lightboxOverlay').remove()">✕</button>
+    </div>`;
+
+  // Swipe support
+  let touchStartX = 0;
+  lb.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+  lb.addEventListener('touchend', e => {
+    const diff = touchStartX - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 50) navigateLightbox(diff > 0 ? 1 : -1);
+  });
+
+  document.body.appendChild(lb);
+}
+
+function navigateLightbox(dir) {
+  const newIdx = currentLightboxIdx + dir;
+  if (newIdx < 0 || newIdx >= currentLightboxData.length) return;
+  currentLightboxIdx = newIdx;
+  renderLightbox();
+}
+
+// ======== PULL TO REFRESH ========
+let ptrStartY = 0;
+let ptrActive = false;
+
+document.addEventListener('touchstart', e => {
+  if (window.scrollY === 0) {
+    ptrStartY = e.touches[0].clientY;
+    ptrActive = true;
+  }
+}, { passive: true });
+
+document.addEventListener('touchmove', e => {
+  if (!ptrActive) return;
+  const diff = e.touches[0].clientY - ptrStartY;
+  if (diff > 60) {
+    document.getElementById('ptrIndicator').classList.add('visible');
+  }
+}, { passive: true });
+
+document.addEventListener('touchend', e => {
+  if (!ptrActive) return;
+  const diff = e.changedTouches[0].clientY - ptrStartY;
+  if (diff > 60) {
+    loadLiveFeed(false);
+    setTimeout(() => document.getElementById('ptrIndicator').classList.remove('visible'), 800);
+  } else {
+    document.getElementById('ptrIndicator').classList.remove('visible');
+  }
+  ptrActive = false;
+});
+
+// ======== UPLOAD MODAL ========
+function openUploadModal() {
+  const modal   = document.getElementById('uploadModal');
+  const content = document.getElementById('modalContent');
+  modal.style.display = 'flex';
+  setTimeout(() => content.classList.add('open'), 10);
+}
+
+function closeUploadModal() {
+  const content = document.getElementById('modalContent');
+  content.classList.remove('open');
+  setTimeout(() => {
+    document.getElementById('uploadModal').style.display = 'none';
+    resetForm();
+  }, 300);
+}
+
+function handleFilePreview(input) {
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      document.getElementById('previewPlaceholder').style.display = 'none';
+      const preview = document.getElementById('imagePreview');
+      preview.src = e.target.result;
+      preview.classList.remove('hidden');
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+function resetForm() {
+  ['guestName','guestMessage'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('imageInput').value = '';
+  document.getElementById('imagePreview').classList.add('hidden');
+  document.getElementById('previewPlaceholder').style.display = '';
+}
+
+window.onclick = (e) => {
+  if (e.target === document.getElementById('uploadModal')) closeUploadModal();
+};
+
+// ======== UPLOAD POV ========
+async function handleUpload() {
+  const name = document.getElementById('guestName').value.trim();
+  const msg  = document.getElementById('guestMessage').value;
+  const file = document.getElementById('imageInput').files[0];
+  if (!name) { showToast('Sila masukkan nama anda.', 'error'); return; }
+  setLoading(true, 'Sedang Menyimpan...');
+  try {
+    let imgWeb = '', imgFull = '';
+    if (file) {
+      [imgWeb, imgFull] = await Promise.all([
+        compressImage(file, 800, 0.7),
+        compressImage(file, 2000, 0.9)
+      ]);
+    }
+    gasPost('uploadPovData', { data: { name, msg, imageWeb: imgWeb, imageFull: imgFull } })
+      .then(res => {
+        if (res.success) {
+          closeUploadModal();
+          loadLiveFeed(false);
+          showToast('Momen anda berjaya dikongsi! ❤');
+        } else {
+          showToast('Ralat: ' + (res.error || 'Tidak diketahui'), 'error');
+        }
+        setLoading(false, 'Hantar Moment');
+      })
+      .catch(err => {
+        showToast('Ralat sambungan. Cuba semula.', 'error');
+        setLoading(false, 'Hantar Moment');
+      });
+  } catch(e) {
+    showToast('Gagal memproses gambar. Cuba semula.', 'error');
+    setLoading(false, 'Hantar Moment');
+  }
+}
+
+function setLoading(isLoading, text) {
+  document.getElementById('submitBtn').disabled = isLoading;
+  document.getElementById('loader').classList.toggle('hidden', !isLoading);
+  document.getElementById('btnText').innerText = text;
+}
+
+function compressImage(file, maxWidth, quality) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = e => {
+      const img = new Image();
+      img.src = e.target.result;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width, h = img.height;
+        if (w > h) { if (w > maxWidth) { h *= maxWidth/w; w = maxWidth; } }
+        else        { if (h > maxWidth) { w *= maxWidth/h; h = maxWidth; } }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+    };
+  });
+}
+
+// ======== AUTO REFRESH (60s) ========
+setInterval(() => loadLiveFeed(false), 60000);
+
+// ======== INIT ========
+window.addEventListener('load', () => loadLiveFeed(true));
+
+</script>
+</body>
+</html>
