@@ -937,16 +937,15 @@ function animateProgress(from, to, ms, label) {
 }
 
 // ════════════════════════════════════════════════════
-//  COMPRESS — createObjectURL, tanpa FileReader
+//  COMPRESS — cuba createObjectURL dulu, fallback ke FileReader
+//  Samsung Gallery & sesetengah Android pakai content:// URI
+//  yang createObjectURL tak boleh decode — FileReader handle ini
 // ════════════════════════════════════════════════════
-function compressImage(file, maxWidth, quality) {
+function drawToCanvas(imgSrc, maxWidth, quality) {
   return new Promise((resolve, reject) => {
-    if (file.size > 80 * 1024 * 1024) { reject(new Error('Fail terlalu besar')); return; }
-    const blobUrl = URL.createObjectURL(file);
-    const img     = new Image();
-    img.onerror = () => { URL.revokeObjectURL(blobUrl); reject(new Error('Gagal decode imej')); };
+    const img = new Image();
+    img.onerror = () => reject(new Error('decode fail'));
     img.onload  = () => {
-      URL.revokeObjectURL(blobUrl);
       try {
         const canvas = document.createElement('canvas');
         let w = img.width, h = img.height;
@@ -954,14 +953,38 @@ function compressImage(file, maxWidth, quality) {
         else        { if (h > maxWidth) { w = Math.round(w * maxWidth / h); h = maxWidth; } }
         canvas.width = w; canvas.height = h;
         const ctx = canvas.getContext('2d');
-        if (!ctx) { reject(new Error('Canvas context null')); return; }
+        if (!ctx) { reject(new Error('Canvas null')); return; }
         ctx.drawImage(img, 0, 0, w, h);
         const result = canvas.toDataURL('image/jpeg', quality);
         if (!result || result === 'data:,' || result.length < 100) { reject(new Error('Canvas rosak')); return; }
         resolve(result);
       } catch(e) { reject(e); }
     };
-    img.src = blobUrl;
+    img.src = imgSrc;
+  });
+}
+
+function compressImage(file, maxWidth, quality) {
+  return new Promise((resolve, reject) => {
+    if (file.size > 80 * 1024 * 1024) { reject(new Error('Fail terlalu besar')); return; }
+
+    // Cuba 1: createObjectURL — pantas, sesuai untuk file:// URI
+    const blobUrl = URL.createObjectURL(file);
+    drawToCanvas(blobUrl, maxWidth, quality)
+      .then(result => { URL.revokeObjectURL(blobUrl); resolve(result); })
+      .catch(() => {
+        // Cuba 2: FileReader fallback — untuk content:// URI (Samsung Gallery, dll)
+        URL.revokeObjectURL(blobUrl);
+        DB.warn('createObjectURL fail — cuba FileReader fallback...');
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('FileReader gagal'));
+        reader.onload  = e => {
+          drawToCanvas(e.target.result, maxWidth, quality)
+            .then(resolve)
+            .catch(e2 => reject(new Error('Kedua-dua method gagal: ' + e2.message)));
+        };
+        reader.readAsDataURL(file);
+      });
   });
 }
 
