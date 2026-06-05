@@ -552,7 +552,7 @@
 
 <script>
 
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbx8i-Gz52YqB4YKq9SSF_FHW4UItzckQbz7BhZrqNy2liRzO9aUmBFEzXzdR-Cl9EVoGg/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyn5HdthT503AP4Iqsr2yZFq9IgCuazbZCzznmMfphCKrUaVol2dzSPKBUSovQ944Ut4A/exec';
 
 function gasGet(action) {
   return fetch(GAS_URL + '?action=' + encodeURIComponent(action)).then(r => r.json());
@@ -860,32 +860,50 @@ async function handleUpload() {
   const msg  = document.getElementById('guestMessage').value;
   const file = document.getElementById('imageInput').files[0];
   if (!name) { showToast('Sila masukkan nama anda.', 'error'); return; }
+
   setLoading(true, 'Sedang Menyimpan...');
+
   try {
     let imgWeb = '', imgFull = '';
+
     if (file) {
-      [imgWeb, imgFull] = await Promise.all([
-        compressImage(file, 800, 0.7),
-        compressImage(file, 2000, 0.9)
-      ]);
+      try {
+        // Timeout 30s — kalau phone Android lambat proses, tak akan hang selamanya
+        const withTimeout = (promise, ms) =>
+          Promise.race([promise, new Promise((_, rej) =>
+            setTimeout(() => rej(new Error('Timeout memproses gambar')), ms))]);
+
+        [imgWeb, imgFull] = await Promise.all([
+          withTimeout(compressImage(file, 800,  0.7), 30000),
+          withTimeout(compressImage(file, 2000, 0.9), 30000)
+        ]);
+      } catch (compErr) {
+        // Kalau compress fail (Android low memory, canvas crash, dll)
+        // — hantar tanpa gambar, ucapan tetap tersimpan
+        console.warn('compressImage gagal:', compErr);
+        showToast('Gambar gagal diproses — hantar ucapan sahaja.', 'error');
+        imgWeb = '';
+        imgFull = '';
+      }
     }
-    gasPost('uploadPovData', { data: { name, msg, imageWeb: imgWeb, imageFull: imgFull } })
-      .then(res => {
-        if (res.success) {
-          closeUploadModal();
-          loadLiveFeed(false);
-          showToast('Momen anda berjaya dikongsi! ❤');
-        } else {
-          showToast('Ralat: ' + (res.error || 'Tidak diketahui'), 'error');
-        }
-        setLoading(false, 'Hantar Moment');
-      })
-      .catch(err => {
-        showToast('Ralat sambungan. Cuba semula.', 'error');
-        setLoading(false, 'Hantar Moment');
+
+    try {
+      const res = await gasPost('uploadPovData', {
+        data: { name, msg, imageWeb: imgWeb, imageFull: imgFull }
       });
-  } catch(e) {
-    showToast('Gagal memproses gambar. Cuba semula.', 'error');
+      if (res.success) {
+        closeUploadModal();
+        loadLiveFeed(false);
+        showToast('Momen anda berjaya dikongsi! ❤');
+      } else {
+        showToast('Ralat: ' + (res.error || 'Tidak diketahui'), 'error');
+      }
+    } catch (netErr) {
+      showToast('Ralat sambungan. Cuba semula.', 'error');
+    }
+  } catch (e) {
+    showToast('Ralat tidak dijangka. Cuba semula.', 'error');
+  } finally {
     setLoading(false, 'Hantar Moment');
   }
 }
@@ -896,23 +914,59 @@ function setLoading(isLoading, text) {
   document.getElementById('btnText').innerText = text;
 }
 
+// compressImage — versi Android-safe
+// Masalah asal: tiada onerror handler, canvas null crash senyap, promise hang
 function compressImage(file, maxWidth, quality) {
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
+
+    // Semak saiz fail — tolak kalau lebih 80MB (selamat dari crash memori)
+    if (file.size > 80 * 1024 * 1024) {
+      reject(new Error('Fail terlalu besar (>80MB)')); return;
+    }
+
     const reader = new FileReader();
-    reader.readAsDataURL(file);
+
+    reader.onerror = () => reject(new Error('FileReader gagal baca fail'));
+
     reader.onload = e => {
       const img = new Image();
-      img.src = e.target.result;
+
+      img.onerror = () => reject(new Error('Gagal decode imej'));
+
       img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let w = img.width, h = img.height;
-        if (w > h) { if (w > maxWidth) { h *= maxWidth/w; w = maxWidth; } }
-        else        { if (h > maxWidth) { w *= maxWidth/h; h = maxWidth; } }
-        canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', quality));
+        try {
+          const canvas = document.createElement('canvas');
+          let w = img.width, h = img.height;
+
+          // Kira dimensi baru dengan kekalkan nisbah
+          if (w > h) { if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; } }
+          else        { if (h > maxWidth) { w = Math.round(w * maxWidth / h); h = maxWidth; } }
+
+          canvas.width  = w;
+          canvas.height = h;
+
+          const ctx = canvas.getContext('2d');
+          if (!ctx) { reject(new Error('Canvas context null — memori tidak cukup')); return; }
+
+          ctx.drawImage(img, 0, 0, w, h);
+
+          const result = canvas.toDataURL('image/jpeg', quality);
+
+          // Pastikan output bukan kosong atau rosak
+          if (!result || result === 'data:,' || result.length < 100) {
+            reject(new Error('Canvas output rosak')); return;
+          }
+
+          resolve(result);
+        } catch (err) {
+          reject(err);
+        }
       };
+
+      img.src = e.target.result;
     };
+
+    reader.readAsDataURL(file);
   });
 }
 
