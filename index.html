@@ -842,14 +842,13 @@ function closeUploadModal() {
 
 function handleFilePreview(input) {
   if (input.files && input.files[0]) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      document.getElementById('previewPlaceholder').style.display = 'none';
-      const preview = document.getElementById('imagePreview');
-      preview.src = e.target.result;
-      preview.classList.remove('hidden');
-    };
-    reader.readAsDataURL(input.files[0]);
+    // Guna createObjectURL untuk preview — lebih pantas dan reliable pada Android
+    const url     = URL.createObjectURL(input.files[0]);
+    const preview = document.getElementById('imagePreview');
+    preview.onload = () => URL.revokeObjectURL(url); // Free memory selepas load
+    preview.src    = url;
+    document.getElementById('previewPlaceholder').style.display = 'none';
+    preview.classList.remove('hidden');
   }
 }
 
@@ -877,14 +876,14 @@ function setProgress(pct, label) {
 }
 
 // Animasi smooth dari nilai 'from' ke 'to' dalam masa 'ms'
+// Jalan serentak dengan kerja sebenar — progress nampak bergerak walaupun canvas proses
 function animateProgress(from, to, ms, label) {
   return new Promise(resolve => {
     if (label !== null) document.getElementById('progressLabel').textContent = label;
     const start = performance.now();
     const step  = now => {
-      const t = Math.min((now - start) / ms, 1);
-      // Easing: ease-out cubic
-      const ease = 1 - Math.pow(1 - t, 3);
+      const t    = Math.min((now - start) / ms, 1);
+      const ease = 1 - Math.pow(1 - t, 3); // ease-out cubic
       setProgress(from + (to - from) * ease, null);
       if (t < 1) requestAnimationFrame(step);
       else resolve();
@@ -893,65 +892,82 @@ function animateProgress(from, to, ms, label) {
   });
 }
 
-// ======== BACA FAIL (real FileReader progress) ========
-// Pulangkan data URL fail, progress 0→1 via callback
-function readFileWithProgress(file, onProgress) {
+// ======== COMPRESS GAMBAR — guna createObjectURL, TANPA FileReader ========
+// createObjectURL lebih reliable pada Android berbanding FileReader.readAsDataURL
+// FileReader boleh fail pada Android bila fail dari kamera atau picker tertentu.
+function compressImage(file, maxWidth, quality) {
   return new Promise((resolve, reject) => {
-    if (file.size > 80 * 1024 * 1024) { reject(new Error('Fail terlalu besar (>80MB)')); return; }
-    const reader = new FileReader();
-    reader.onerror    = () => reject(new Error('FileReader gagal'));
-    reader.onprogress = e => { if (e.lengthComputable) onProgress(e.loaded / e.total); };
-    reader.onload     = e => { onProgress(1); resolve(e.target.result); };
-    reader.readAsDataURL(file);
-  });
-}
+    if (file.size > 80 * 1024 * 1024) {
+      reject(new Error('Fail terlalu besar (>80MB)')); return;
+    }
 
-// ======== COMPRESS DARI DATA URL (Android-safe) ========
-function compressFromDataUrl(dataUrl, maxWidth, quality) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onerror = () => reject(new Error('Gagal decode imej'));
-    img.onload  = () => {
+    // Buat blob URL terus dari file — skip FileReader sepenuhnya
+    const blobUrl = URL.createObjectURL(file);
+    const img     = new Image();
+
+    img.onerror = () => {
+      URL.revokeObjectURL(blobUrl);
+      reject(new Error('Gagal decode imej'));
+    };
+
+    img.onload = () => {
+      // Free memory blob URL selepas image loaded
+      URL.revokeObjectURL(blobUrl);
       try {
         const canvas = document.createElement('canvas');
         let w = img.width, h = img.height;
         if (w > h) { if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; } }
         else        { if (h > maxWidth) { w = Math.round(w * maxWidth / h); h = maxWidth; } }
         canvas.width = w; canvas.height = h;
+
         const ctx = canvas.getContext('2d');
         if (!ctx) { reject(new Error('Canvas context null — memori tidak cukup')); return; }
+
         ctx.drawImage(img, 0, 0, w, h);
         const result = canvas.toDataURL('image/jpeg', quality);
+
         if (!result || result === 'data:,' || result.length < 100) {
           reject(new Error('Canvas output rosak')); return;
         }
         resolve(result);
       } catch(e) { reject(e); }
     };
-    img.src = dataUrl;
+
+    img.src = blobUrl;
   });
 }
 
-// ======== HANTAR VIA XHR (real upload progress) ========
-function gasPostXHR(action, payload, onUploadProgress) {
-  return new Promise((resolve, reject) => {
-    const body = JSON.stringify(Object.assign({ action }, payload));
-    const xhr  = new XMLHttpRequest();
-    xhr.open('POST', GAS_URL);
-    xhr.setRequestHeader('Content-Type', 'text/plain;charset=utf-8');
-    xhr.timeout = 120000;
+// ======== HANTAR VIA FETCH + FAKE PROGRESS ========
+// XHR dibuang — GAS buat redirect yang menyebabkan XHR fail dengan CORS error pada Android.
+// fetch handle redirect GAS dengan betul. Progress difake berdasarkan anggaran masa.
+function gasPostWithProgress(action, payload, payloadBytes, onProgress) {
+  // Anggaran masa upload: ~50KB/s pada mobile lambat, max 60s
+  const estimatedMs = Math.min(Math.max((payloadBytes / 1024 / 50) * 1000, 3000), 60000);
+  let done = false;
 
-    xhr.upload.onprogress = e => {
-      if (e.lengthComputable) onUploadProgress(e.loaded / e.total);
+  // Jalankan animasi fake progress serentak dengan fetch
+  const animLoop = () => {
+    if (done) return;
+    const start = Date.now();
+    const tick  = () => {
+      if (done) return;
+      const t    = Math.min((Date.now() - start) / estimatedMs, 0.92);
+      const ease = 1 - Math.pow(1 - t, 2); // ease-out quad, max 92%
+      onProgress(ease);
+      if (t < 0.92) requestAnimationFrame(tick);
     };
-    xhr.onload    = () => {
-      try { resolve(JSON.parse(xhr.responseText)); }
-      catch(e) { reject(new Error('Response tidak valid')); }
-    };
-    xhr.onerror   = () => reject(new Error('Ralat rangkaian'));
-    xhr.ontimeout = () => reject(new Error('Timeout — cuba semula'));
-    xhr.send(body);
-  });
+    requestAnimationFrame(tick);
+  };
+  animLoop();
+
+  const body = JSON.stringify(Object.assign({ action }, payload));
+  return fetch(GAS_URL, {
+    method : 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body
+  })
+  .then(r => { done = true; return r.json(); })
+  .catch(e => { done = true; throw e; });
 }
 
 // ======== SET LOADING STATE ========
@@ -980,58 +996,51 @@ async function handleUpload() {
     let imgWeb = '', imgFull = '';
 
     if (file) {
-      // ── Peringkat 1: Baca fail (0 → 18%) — REAL FileReader progress ──
-      let dataUrl;
+      // ── Peringkat 1 & 2: Compress web 800px (0 → 40%) ──
+      // compressImage + animateProgress jalan serentak
       try {
-        dataUrl = await readFileWithProgress(file, ratio => {
-          setProgress(ratio * 18, 'Membaca gambar...');
-        });
-      } catch(readErr) {
-        console.warn('readFile gagal:', readErr);
-        showToast('Gambar gagal dibaca — hantar ucapan sahaja.', 'error');
-        dataUrl = null;
+        setProgress(0, 'Memampatkan gambar...');
+        await Promise.all([
+          compressImage(file, 800, 0.7).then(r => { imgWeb = r; }),
+          animateProgress(0, 39, 2000, null)
+        ]);
+        setProgress(40, null);
+      } catch(e) {
+        console.warn('Compress web gagal:', e.message);
+        // Teruskan — gambar tak ada tapi ucapan boleh dihantar
       }
 
-      if (dataUrl) {
-        // ── Peringkat 2: Compress web 800px (18 → 48%) — fake + real ──
-        setProgress(18, 'Memampatkan gambar...');
-        try {
-          const compWebPromise = compressFromDataUrl(dataUrl, 800, 0.7);
-          // Animasi fake sementara canvas proses (jalan serentak)
-          await Promise.all([
-            compWebPromise.then(r => { imgWeb = r; }),
-            animateProgress(18, 47, 2000, null)
-          ]);
-          setProgress(48, null);
-        } catch(e) { console.warn('Compress web gagal:', e); }
-
-        // ── Peringkat 3: Compress full 2000px (48 → 68%) — fake + real ──
-        setProgress(48, 'Memampatkan kualiti penuh...');
-        try {
-          const compFullPromise = compressFromDataUrl(dataUrl, 2000, 0.9);
-          await Promise.all([
-            compFullPromise.then(r => { imgFull = r; }),
-            animateProgress(48, 67, 2500, null)
-          ]);
-          setProgress(68, null);
-        } catch(e) { console.warn('Compress full gagal:', e); }
+      // ── Peringkat 3: Compress full 2000px (40 → 65%) ──
+      try {
+        setProgress(40, 'Memampatkan kualiti penuh...');
+        await Promise.all([
+          compressImage(file, 2000, 0.9).then(r => { imgFull = r; }),
+          animateProgress(40, 64, 2500, null)
+        ]);
+        setProgress(65, null);
+      } catch(e) {
+        console.warn('Compress full gagal:', e.message);
       }
     }
 
-    // ── Peringkat 4: Hantar ke GAS (68 → 92%) — REAL XHR progress ──
-    setProgress(68, 'Menghantar ke server...');
-    const res = await gasPostXHR(
+    // ── Peringkat 4: Upload via fetch + fake progress (65 → 95%) ──
+    const payload     = { data: { name, msg, imageWeb: imgWeb, imageFull: imgFull } };
+    const payloadSize = new Blob([JSON.stringify(payload)]).size;
+
+    setProgress(65, 'Menghantar ke server...');
+    const res = await gasPostWithProgress(
       'uploadPovData',
-      { data: { name, msg, imageWeb: imgWeb, imageFull: imgFull } },
-      ratio => setProgress(68 + ratio * 24, 'Menghantar ke server...')
+      payload,
+      payloadSize,
+      ratio => setProgress(65 + ratio * 30, 'Menghantar ke server...')
     );
 
-    // ── Peringkat 5: GAS proses (92 → 100%) — fake smooth ──
-    await animateProgress(92, 100, 700, 'Menyimpan...');
+    // ── Peringkat 5: GAS proses (95 → 100%) ──
+    await animateProgress(95, 100, 600, 'Menyimpan...');
 
     if (res.success) {
       setProgress(100, 'Selesai! ✓');
-      await _delay(450);
+      await _delay(400);
       closeUploadModal();
       loadLiveFeed(false);
       showToast('Momen anda berjaya dikongsi! ❤');
